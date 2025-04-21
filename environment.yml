@@ -1,0 +1,22 @@
+name: energy-flex 
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python 
+  - tqdm
+  - pandas
+  - numpy
+  - seaborn
+  - matplotlib
+  - scikit-learn
+  - geopandas
+  - libpysal
+  - esda
+  - contextily
+  - pip
+  - pip:
+      - causalml
+
+  
