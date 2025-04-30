@@ -82,8 +82,8 @@
 # LOAD WEATHER DATA FOR REGION
 #------------------------------------------------
 
-load('SalfordEPCMarch2012.mat')
-load('SalfordWeather.mat')
+#load('SalfordEPCMarch2012.mat')
+#load('SalfordWeather.mat')
 
 N = size(designParam,1) #N = number of sample dwellings
 dwellingtype = designParam$DwellingType # matrix for Dwelling type
@@ -129,11 +129,6 @@ designParam$Cluster[which((designParam$DwellingPosition == 1 | designParam$Dwell
 designParam$Cluster[which((designParam$DwellingPosition == 3) & (designParam$AgeBandCode == 3))] <- 3
 
 
-#clear designParam
-#clear dwellingtype
-#clear dwellingposition
-#clear dwellingage
-
 #SPECIFY NUMBER OF CLUSTERS
 C = length(unique())# C = number of building classes (i.e. clusters) for housing stock analysis; Five for case study
 
@@ -152,29 +147,8 @@ C = length(unique())# C = number of building classes (i.e. clusters) for housing
 # ORIGINAL SECTION HAS BEEN REMOVED AND REPLACED WITH HIERARCHICAL MODEL FOR ESTIMATING
 # LOCAL ENERGY INTENSITY.
 
-#create large posterior sample population from joining separate posterior chains
-#gammaposteriors = cat(1, gammaposteriors1,gammaposteriors2,gammaposteriors3,gammaposteriors4)
-
-#clear gammaposteriors1
-#clear gammaposteriors2
-#clear gammaposteriors3
-#clear gammaposteriors4
-#clear S1
-#clear S2
-#clear S3
-#clear S4
-
-#store posterior distributions
-#buildingData(1).posteriors = gammaposteriors(:,2) # pre-1914 terraced houses/bungalows
-#buildingData(2).posteriors = gammaposteriors(:,7) # 1914-1945 semi-detached houses/bungalows
-#buildingData(3).posteriors = gammaposteriors(:,11) # 1945-1964 semi-detached houses/bungalows
-#buildingData(4).posteriors = gammaposteriors(:,13) # 1945-1979 flats and maisonettes
-#buildingData(5).posteriors = gammaposteriors(:,14) # 1945-1979 terraced houses/bungalows
-
-#clear gammaposteriors
-
 # specify number of samples for the Bayesian calibration
-samples = 100; 
+samples = 10; 
 # i.e. number of simulations and number of samples from posteriors of energy intensity
 
 # RUN ANALYSIS FOR EACH BUILDING CLASS
