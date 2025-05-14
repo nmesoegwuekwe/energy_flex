@@ -12,3 +12,8 @@
 02-EnergyModel/*.tar.gz
 02-EnergyModel/*.tar
 02-EnergyModel/*.Rhistory
+*.Rdata
+02-EnergyModel/01_Base_Posterior_Sampling/.Rhistory
+02-EnergyModel/01_Base_Posterior_Sampling/Sample_outputs/.Rhistory
+02-EnergyModel/01_Base_Posterior_Sampling/.Rhistory
+02-EnergyModel/01_Base_Posterior_Sampling/.Rhistory
