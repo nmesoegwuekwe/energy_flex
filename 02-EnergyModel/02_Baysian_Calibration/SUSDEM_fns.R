@@ -65,9 +65,9 @@ Weather_input <- function(wd,latitude){
     IRR_RH <- rbind(IRR_RH,INT_RH)
   }
  
-  IRR_SURF <- IRR_RH * wd[,2]
+  IRR_SURF <- IRR_RH * wd[,3]
   
-  weather_out <- list("weather" = matrix(data = c(wd[,3],IRR_SURF, wd[,2]), nrow=12))
+  weather_out <- list("weather" = matrix(data = c(wd[,4],IRR_SURF, wd[,3]), nrow=12))
   
   return(weather_out)
 }
@@ -77,7 +77,7 @@ Weather_input <- function(wd,latitude){
 IO <- function(samples, designParam, posteriors, weather){
   require(lhs)
   #..............................................
-  # Perform Sensetivity Analysis using aggregate results of all properties for a single building class
+  # Perform Sensitivity Analysis using aggregate results of all properties for a single building class
   #..............................................
   
   M = samples # number of samples for computer simulation
@@ -98,7 +98,7 @@ IO <- function(samples, designParam, posteriors, weather){
   # tc : design points for calibration parameters in computer trials (m x q)
   # Calibration parameters:
   # set-point temp; fraction heated; air leakage @50Pa; Heating system COP; window-to-wall ratio; double-glazing U-value
-  tmin = c(10, 0, 1.5, 0.5, 0.15, 1.5) # minimum values for calibration parameters
+  tmin = c(10, 1, 1.5, 0.5, 0.15, 1.5) # minimum values for calibration parameters
   tmax = c(27, 1, 5.5, 1, 0.4, 3.5) # maximum values for calibration parameters
   
   tc = randomLHS(M,Q)%*%diag(tmax-tmin) + t(matrix(tmin,Q,M)) # Latin hypercube sampling of calibration parameters
@@ -206,8 +206,8 @@ IO <- function(samples, designParam, posteriors, weather){
   
   #specify weather
   #randomly generate weather data for 2010 scenario
-  ExTemp = weather$weather[,1] #monthly average external temperature (degrees C)
-  Irradiation = weather$weather[,2:10] #monthly average irradiation (W/m^2) for eight vertical orientations and horizontal plane
+  ExTemp = weather[,1] #monthly average external temperature (degrees C)
+  Irradiation = weather[,2:10] #monthly average irradiation (W/m^2) for eight vertical orientations and horizontal plane
   
   #Weather(i,:,1) = ExTemp; % store weather data
   #Weather(i,:,2:10) = Irradiation; % store weather data
@@ -306,7 +306,7 @@ IO <- function(samples, designParam, posteriors, weather){
       #determine dwelling orientation
       Orientation = round(runif(1,1,8)) #orientation of building is random at 45degree intervals          
       
-      BoilerEfficiency = (boilerefficiency[n])/100 # efficiency of space heating boiler (divided by 100 to scale to 0-1)
+      BoilerEfficiency = (boilerefficiency[n]) # efficiency of space heating boiler (divided by 100 to scale to 0-1)
       
       SingleGlazing = rnorm(1,SingleGlazingbaseline,SingleGlazingbaseline*0.05) # single glazing U-value (W/m^2K) is normally distributed around 2.1
       
@@ -825,7 +825,7 @@ VentCoefficient <- function(Unat, Uinf, hc, EnvelopeArea, Volume){
   #for heating period:
   Infiltration = Uinf*EnvelopeArea #calculates Infiltration rate (l/s) during heating period
   
-  if(Infiltration<AirRequired){
+  if(Infiltration < AirRequired){
     NatVentHeating = AirRequired-Infiltration;
   }
   else{
@@ -1544,40 +1544,40 @@ UKBLDG_Match <- function(calepc){
 
 ParityData <- function(parityname){
   
-  parity_data <- read.csv(file=paste0(parityname), stringsAsFactors = F)
+  parity_select <- read.csv(file=paste0(parityname), stringsAsFactors = F)
   
-  xlcolconv <- function(col){
-    # test: 1 = A, 26 = Z, 27 = AA, 703 = AAA
-    if (is.character(col)) {
-      # codes from https://stackoverflow.com/a/34537691/2292993
-      s = col
-      # Uppercase
-      s_upper <- toupper(s)
-      # Convert string to a vector of single letters
-      s_split <- unlist(strsplit(s_upper, split=""))
-      # Convert each letter to the corresponding number
-      s_number <- sapply(s_split, function(x) {which(LETTERS == x)})
-      # Derive the numeric value associated with each letter
-      numbers <- 26^((length(s_number)-1):0)
-      # Calculate the column number
-      column_number <- sum(s_number * numbers)
-      return(column_number)
-    } else {
-      n = col
-      letters = ''
-      while (n > 0) {
-        r = (n - 1) %% 26  # remainder
-        letters = paste0(intToUtf8(r + utf8ToInt('A')), letters) # ascii
-        n = (n - 1) %/% 26 # quotient
-      }
-      return(letters)
-    }
-  }
+  # xlcolconv <- function(col){
+  #   # test: 1 = A, 26 = Z, 27 = AA, 703 = AAA
+  #   if (is.character(col)) {
+  #     # codes from https://stackoverflow.com/a/34537691/2292993
+  #     s = col
+  #     # Uppercase
+  #     s_upper <- toupper(s)
+  #     # Convert string to a vector of single letters
+  #     s_split <- unlist(strsplit(s_upper, split=""))
+  #     # Convert each letter to the corresponding number
+  #     s_number <- sapply(s_split, function(x) {which(LETTERS == x)})
+  #     # Derive the numeric value associated with each letter
+  #     numbers <- 26^((length(s_number)-1):0)
+  #     # Calculate the column number
+  #     column_number <- sum(s_number * numbers)
+  #     return(column_number)
+  #   } else {
+  #     n = col
+  #     letters = ''
+  #     while (n > 0) {
+  #       r = (n - 1) %% 26  # remainder
+  #       letters = paste0(intToUtf8(r + utf8ToInt('A')), letters) # ascii
+  #       n = (n - 1) %/% 26 # quotient
+  #     }
+  #     return(letters)
+  #   }
+  # }
+  # 
   
-  
-  parity_select <- parity_haringey[,unlist(lapply(c("MT","CT","BD","GZ","HB","MV","NV","NX","BR",
-                                                    "BJ","AVE","DH","DL","NN","AVM","JZ","KJ","KU","CL",
-                                                    "CN","JX","KB","KL","KH","KW","KS","CJ","MX","GP"),xlcolconv))]
+  #parity_select <- parity_data[,unlist(lapply(c("MT","CT","BD","GZ","HB","MV","NV","NX","BR",
+  #                                                  "BJ","AVE","DH","DL","NN","AVM","JZ","KJ","KU","CL",
+  #                                                  "CN","JX","KB","KL","KH","KW","KS","CJ","MX","GP"),xlcolconv))]
   
   colnames(parity_select) <- parity_select[9,]
   parity_select <- parity_select[-c(1:9),]
@@ -1910,8 +1910,8 @@ ParityData <- function(parityname){
   
   calepc$NEED_TYPE <- as.vector(unlist(mapply(epc_built_type_convert, epc_type=parity_select$PropertyType,  epc_form = parity_select$BuiltForm)))
   
-  calepc <- filter(calepc,!is.na(NEED_TYPE))
-  calepc <- filter(calepc,!is.na(`NEED_AGE_BANDS`))
+  #calepc <- filter(calepc,!is.na(NEED_TYPE))
+  #calepc <- filter(calepc,!is.na(`NEED_AGE_BANDS`))
   
   calepc$group <- as.vector((mapply(typology_parser, x=calepc$NEED_TYPE, y=calepc$NEED_AGE_BANDS)))
   calepc$CylinderInsulation = 0

@@ -28,6 +28,8 @@ In addition this analysis will need a weather data file containing mean monthly 
 
 This aim of this calibration step is to use a sample of household data with design parameters to calibarte our energy intensity distribution and infer distributions for uncertain building parameters which may be used in retrofit and energy flexibility analyses.
 
+![SUSDEM Structure](SUSDEM_Original_Structure.png)
+
 The following steps are undertaken for each of the household typologies of interest:
 1. Load and process relevant data;
 2. Prepare calibartion inputs `xf`,`yf`,`xc`,`yc`, and `tc`;
