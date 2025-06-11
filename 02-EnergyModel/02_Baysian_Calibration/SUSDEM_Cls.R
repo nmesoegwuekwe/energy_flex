@@ -96,7 +96,7 @@ setClass("Envelope",
                         Walls = "matrix", #Area in m^2 of walls for each orientation from SW to W
                         Glazing1 = "matrix", #Area in m^2 of single glazing for each orientation from SW to W
                         Glazing2 = "matrix", #Area in m^2 of double glazing for each orientation from SW to W
-                        Doors = "numeric",
+                        Doors = "matrix",
                         #Area in m^2 of second glazing type for each orientation from SW to W
                         TotalAreas = "matrix" #Total surface area for each orientation
                         #Should be addition of all the above areas
@@ -282,11 +282,11 @@ constructions <- function(EW1,EW2,DA,IW,SG,DG,roof,floor,door,SD,TM,DwellingType
   
   #single-glazing
   constructions@Glazing1 = SG; #U-value in W/m2K
-  constructions@SolarT1 = 0.85; #Solar Transmittance
+  constructions@SolarT1 = 0.85; #Solar Transmittance Table 6b
   
   #double-glazing
   constructions@Glazing2 = DG;
-  constructions@SolarT2 = 0.76;
+  constructions@SolarT2 = 0.76; #Solar Transmittance Table 6b
   
   #door
   constructions@Door = door;
@@ -502,7 +502,7 @@ setClass("Occupants",
                         # based on an averaged value
                         # (averaged across time and accounting for presence of children)
          ),
-         prototype(Number = 60)
+         prototype(OccupantGain = 60)
 )
 
 occupancy <- function(HouseholdNumber){
@@ -519,8 +519,8 @@ occupancy <- function(HouseholdNumber){
 setClass("Weather",
          representation(ExternalTemp = "matrix", #Monthly average temperature in degrees C.
                         GroundTemp = "matrix", #Monthly average ground temperature
-                        SolarIrr = "matrix", #Monthly average solar irradiation (W/m2)
-                        SunsetTime = "matrix" #Hour of sunset
+                        SolarIrr = "data.frame", #Monthly average solar irradiation (W/m2)
+                        SunsetTime = "numeric" #Hour of sunset
          )
 )
 
