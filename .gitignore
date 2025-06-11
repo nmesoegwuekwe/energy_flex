@@ -17,3 +17,9 @@
 02-EnergyModel/01_Base_Posterior_Sampling/Sample_outputs/.Rhistory
 02-EnergyModel/01_Base_Posterior_Sampling/.Rhistory
 02-EnergyModel/01_Base_Posterior_Sampling/.Rhistory
+*.gz
+02-EnergyModel/02_Baysian_Calibration/Londmon.dat
+02-EnergyModel/02_Baysian_Calibration/haringey_prior_dist.Rda
+02-EnergyModel/02_Baysian_Calibration/Haringey_Raw_Data.csv
+02-EnergyModel/02_Baysian_Calibration/Haringey_Test_Sample.csv
+02-EnergyModel/02_Baysian_Calibration/Londmon_dat.csv

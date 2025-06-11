@@ -1,89 +1,35 @@
-#------------------------------------------------------
+------------------------------------------------------
 #SUSDEM:
 # STOCHASTIC URBAN SCALE DOMESTIC ENERGY MODEL
 # BAYESIAN REGRESSION, CALIBRATION, AND DECISION-MAKING
-# ------------------------------------------------------
+------------------------------------------------------
 # Andre Neto-Bradley 2021
 # Adapted from Original MATLAB (Adam Booth and Ruchi Choudhary, 2013)
 # Energy Efficient Cities Initiative (www.eeci.cam.ac.uk)
-#-------------------------------------------------------
-  
-#-------------------------------------------------------
-# ALL CODE RELATES TO CASE STUDY HOUSING STOCK
-# IN SALFORD, UK
-# See samples files with code
-#-------------------------------------------------------
-  
-#--------------------------------------------------------------
+-------------------------------------------------------
+
+# OVERVIEW--------------------------------------------------------------
 # INPUTS: Energy Performance Certificate / RdSAP inputs
 #         for sample dwellings
 #         Weather data - monthly temperatures and irradition
 #         Energy intensity posteriors from Bayesian regression
-#         (See Bayesian regression Matlab files)
+#         (See Bayesian Hierarchical Model EnergyFlex files)
 #
 # OUTPUTS: End-use energy demands
 #          Utilities (installation costs; lifetime financial savings;
 #         CO2 emissions savings; thermal comfort improvement)
-#--------------------------------------------------------------
+--------------------------------------------------------------
   
-# clear all
-
-#-------------------------------
-# CREATE EMPTY ARRAY OF STRUCTURES TO HOLD DATA (INPUTS AND OUTPUTS)
-# CLUSTER HOUSING STOCK BY STRUCTURAL TYPE AND AGE
-# (Five primary clusters chosen for case study housing stock)
-#-------------------------------
-  
-# EPC inputs
-# buildingData(1).inputs = []; % pre-1914 terraced houses/bungalows
-# buildingData(2).inputs = []; % 1914-1945 semi-detached houses/bungalows
-# buildingData(3).inputs = []; % 1945-1964 semi-detached houses/bungalows
-# buildingData(4).inputs = []; % 1945-1979 flats and maisonettes
-# buildingData(5).inputs = []; % 1945-1979 terraced houses/bungalows
-
-# Total floor areas
-# buildingData(1).areas = []; % pre-1914 terraced houses/bungalows
-# buildingData(2).areas = []; % 1914-1945 semi-detached houses/bungalows
-# buildingData(3).areas = []; % 1945-1964 semi-detached houses/bungalows
-# buildingData(4).areas = []; % 1945-1979 flats and maisonettes
-# buildingData(5).areas = []; % 1945-1979 terraced houses/bungalows
-
-# End-use energy demands
-# buildingData(1).Demand = []; % pre-1914 terraced houses/bungalows
-# buildingData(2).Demand = []; % 1914-1945 semi-detached houses/bungalows
-# buildingData(3).Demand = []; % 1945-1964 semi-detached houses/bungalows
-# buildingData(4).Demand = []; % 1945-1979 flats and maisonettes
-# buildingData(5).Demand = []; % 1945-1979 terraced houses/bungalows
-
-# Utilities (installation costs; lifetime financial savings; CO2 emissions savings; thermal comfort improvement)
-# buildingData(1).Utility = []; % pre-1914 terraced houses/bungalows
-# buildingData(2).Utility = []; % 1914-1945 semi-detached houses/bungalows
-# buildingData(3).Utility = []; % 1945-1964 semi-detached houses/bungalows
-# buildingData(4).Utility = []; % 1945-1979 flats and maisonettes
-# buildingData(5).Utility = []; % 1945-1979 terraced houses/bungalows
-
-# Calibration parameter posterior samples
-# buildingData(1).pvals = []; % pre-1914 terraced houses/bungalows
-# buildingData(2).pvals = []; % 1914-1945 semi-detached houses/bungalows
-# buildingData(3).pvals = []; % 1945-1964 semi-detached houses/bungalows
-# buildingData(4).pvals = []; % 1945-1979 flats and maisonettes
-# buildingData(5).pvals = []; % 1945-1979 terraced houses/bungalows
-
-# Bayesian calibration parameters
-# buildingData(1).params = []; % pre-1914 terraced houses/bungalows
-# buildingData(2).params = []; % 1914-1945 semi-detached houses/bungalows
-# buildingData(3).params = []; % 1945-1964 semi-detached houses/bungalows
-# buildingData(4).params = []; % 1945-1979 flats and maisonettes
-# buildingData(5).params = []; % 1945-1979 terraced houses/bungalows
-
-#------------------------------------------------
+# LOAD SUSDEM Classes and Functions ######## 
 # IMPORT INPUTS FOR CONSTRUCTION/DESIGN PARAMETERS
 # FROM EPC INPUT DATA
 # LOAD WEATHER DATA FOR REGION
-#------------------------------------------------
 
-load('SalfordEPCMarch2012.mat')
-load('SalfordWeather.mat')
+source("SUSDEM_fns.R")
+source("SUSDEM_Cls.R")
+
+#load('SalfordEPCMarch2012.mat')
+#load('SalfordWeather.mat')
 
 N = size(designParam,1) #N = number of sample dwellings
 dwellingtype = designParam$DwellingType # matrix for Dwelling type
@@ -95,47 +41,9 @@ firstfloorareas = designParam$FirstFloorArea #matrix for First floor area
 secondfloorareas = designParam$SecondFloorArea #matrix for Second floor area
 totalfloorareas = groundfloorareas+firstfloorareas+secondfloorareas #matrix for Total floor area
 
-#create structure of input data
-#sort dwellings into clusters by building class (structural type and construction age)
-# for(n in 1:N){
-#   
-#   if((dwellingposition[n] == 1 || dwellingposition[n] == 2) && (dwellingage[n] == 0 || dwellingage[n] == 1)){
-#     buildingData(1).inputs = cat(1,buildingData(1).inputs,designParam(n,:));
-#     buildingData(1).areas = cat(1,buildingData(1).areas,totalfloorareas(n,:));
-#   }else if((dwellingposition[n] == 3) && (dwellingage[n] == 1 || dwellingage[n] == 2)){
-#     buildingData(2).inputs = cat(1,buildingData(2).inputs,designParam(n,:));
-#     buildingData(2).areas = cat(1,buildingData(2).areas,totalfloorareas(n,:));
-#   }else if((dwellingposition(n,1) == 3) && (dwellingage(n,1) == 3)){
-#     buildingData(3).inputs = cat(1,buildingData(3).inputs,designParam(n,:));
-#     buildingData(3).areas = cat(1,buildingData(3).areas,totalfloorareas(n,:));
-#   }else if((dwellingtype(n,1) == 1 || dwellingposition(n,1) == 3) && (dwellingage(n,1) == 3 || dwellingage(n,1) == 4 || dwellingage(n,1) == 5)){
-#     buildingData(4).inputs = cat(1,buildingData(4).inputs,designParam(n,:));
-#     buildingData(4).areas = cat(1,buildingData(4).areas,totalfloorareas(n,:));
-#   }else if((dwellingposition(n,1) == 1 || dwellingposition(n,1) == 2) && (dwellingage(n,1) == 3 || dwellingage(n,1) == 4 || dwellingage(n,1) == 5)){
-#     buildingData(5).inputs = cat(1,buildingData(5).inputs,designParam(n,:));
-#     buildingData(5).areas = cat(1,buildingData(5).areas,totalfloorareas(n,:));
-#   }
-#   
-#   }
-
-# Temporary equivalent - to be replaced with NEED typology function from Energy Intensity Estimation
-
-designParam$Cluster <- 0
-
-designParam$Cluster[which((designParam$DwellingPosition == 1 | designParam$DwellingPosition == 2) & (designParam$AgeBandCode == 0 | designParam$AgeBandCode == 1))] <- 1
-designParam$Cluster[which((designParam$DwellingPosition == 3) & (designParam$AgeBandCode == 1 | designParam$AgeBandCode == 2))] <- 2
-designParam$Cluster[which((designParam$DwellingType == 1 | designParam$DwellingPosition == 3) & (designParam$AgeBandCode == 3 | designParam$AgeBandCode == 4| designParam$AgeBandCode == 5))] <- 4
-designParam$Cluster[which((designParam$DwellingPosition == 1 | designParam$DwellingPosition == 2) & (designParam$AgeBandCode == 3 | designParam$AgeBandCode == 4| designParam$AgeBandCode == 5))] <- 5
-designParam$Cluster[which((designParam$DwellingPosition == 3) & (designParam$AgeBandCode == 3))] <- 3
-
-
-#clear designParam
-#clear dwellingtype
-#clear dwellingposition
-#clear dwellingage
 
 #SPECIFY NUMBER OF CLUSTERS
-C = length(unique())# C = number of building classes (i.e. clusters) for housing stock analysis; Five for case study
+# C = length(unique())# C = number of building classes (i.e. clusters) for housing stock analysis; Five for case study
 
 
 #------------------------------------------------
@@ -152,35 +60,58 @@ C = length(unique())# C = number of building classes (i.e. clusters) for housing
 # ORIGINAL SECTION HAS BEEN REMOVED AND REPLACED WITH HIERARCHICAL MODEL FOR ESTIMATING
 # LOCAL ENERGY INTENSITY.
 
-#create large posterior sample population from joining separate posterior chains
-#gammaposteriors = cat(1, gammaposteriors1,gammaposteriors2,gammaposteriors3,gammaposteriors4)
-
-#clear gammaposteriors1
-#clear gammaposteriors2
-#clear gammaposteriors3
-#clear gammaposteriors4
-#clear S1
-#clear S2
-#clear S3
-#clear S4
-
-#store posterior distributions
-#buildingData(1).posteriors = gammaposteriors(:,2) # pre-1914 terraced houses/bungalows
-#buildingData(2).posteriors = gammaposteriors(:,7) # 1914-1945 semi-detached houses/bungalows
-#buildingData(3).posteriors = gammaposteriors(:,11) # 1945-1964 semi-detached houses/bungalows
-#buildingData(4).posteriors = gammaposteriors(:,13) # 1945-1979 flats and maisonettes
-#buildingData(5).posteriors = gammaposteriors(:,14) # 1945-1979 terraced houses/bungalows
-
-#clear gammaposteriors
-
 # specify number of samples for the Bayesian calibration
-samples = 100; 
+samples = 10; 
 # i.e. number of simulations and number of samples from posteriors of energy intensity
 
 # RUN ANALYSIS FOR EACH BUILDING CLASS
 # parpool(C) %run parallel analysis for each cluster
-for i = 1:C
+#for i = 1:C
 
+# DATA LOADING #####
+# We now need to load the relevant data and carry out some data cleaning before we can prepare the input files for the bayesian calibration.
+# - We need to load the posteriors from the energy intensity estimation step (Step 2 on EnergyFlex)
+# - We need to load relevant weather data for the local area
+# For the test case of Haringey the LA number is E09000014
+
+library(data.table)
+library(dplyr)
+
+# Load the EUI posteriors from previous EFlex Module
+load(file='haringey_prior_dist.rda')
+
+# Load relevant weather data (this needs monthly temperture and irradiance data)
+local_weather <- read.csv("Londmon_dat.csv")
+weather_data <- Weather_input(local_weather,51.5)
+weather_IO <- weather_data$weather
+
+# OPTION 1: The below loads the raw RdSAP data for Haringey we used and processed it using the custom 
+# import function. If you are only interested in testing the calibration itself load the pre-processed 
+# data in OPTION 2 below.
+  
+# NEEDS DEBUGGING STILL
+# haringey_sample <- ParityData("Haringey_Raw_Data.csv")
+
+# OPTION 2: Load pre-processed sample of data for testing purposes.
+haringey_sample <- read.csv("Haringey_Test_Sample.csv")
+
+# In both cases you will have NAs in place for non-relevant values (e.g. a single floor flat 
+# would have 'SecondFloorArea' marked as NA). You need to replace these NAs with zeros to allow the the function to run.
+
+RDSAP_NA_Cleanser <- function(designParam){
+  designParam$SecondFloorHeight[which(is.na(designParam$SecondFloorHeight))] <- 0
+  designParam$FirstFloorHeight[which(is.na(designParam$FirstFloorHeight))] <- 0
+  designParam$SecondFloorArea[which(is.na(designParam$SecondFloorArea))] <- 0
+  designParam$FirstFloorArea[which(is.na(designParam$FirstFloorArea))] <- 0
+  designParam$SecondFloorPerimeter[which(is.na(designParam$SecondFloorPerimeter))] <- 0
+  designParam$FirstFloorPerimeter[which(is.na(designParam$FirstFloorPerimeter))] <- 0
+  designParam$RoofInsulation[which(is.na(designParam$RoofInsulation))] <- 0
+  designParam$LELpercentage[which(is.na(designParam$LELpercentage))] <- 0
+  
+  return(designParam)
+}
+
+haringey_sample_clean <- RDSAP_NA_Cleanser(haringey_sample)
 #-----------------------------------------------------
 # CALCULATE INPUTS AND OUTPUTS FOR BAYESIAN CALIBRATION
 #-----------------------------------------------------
@@ -191,48 +122,59 @@ for i = 1:C
 # yf: Response from field experiments
 # yc: Response from computer simulations
 
-IO_out = IO(samples, filter(designParam,Cluster==5), gammapost, salford_weather)
+# IO_out can take a while to run - 20-40 seconds not unusual.
+IO_out = IO(samples, filter(haringey_sample_clean,group==13), haringey_prior_dist[which(haringey_prior_dist$group==13),2], weather_data$weather)
 
 xf = as.data.frame(IO_out[1:(samples)])
 yf = as.data.frame(IO_out[(1+samples):(2*(samples))])
 xc = as.data.frame(IO_out[(1+(2*samples)):(3*(samples))])
 yc = as.data.frame(IO_out[(1+(3*samples)):(4*(samples))])
-tc= data.frame(IO_out[(1+(4*samples)):(5*(samples))],
-                IO_out[(1+(5*samples)):(6*(samples))],
-                IO_out[(1+(6*samples)):(7*(samples))],
-                IO_out[(1+(7*samples)):(8*(samples))],
-                IO_out[(1+(8*samples)):(9*(samples))],
-                IO_out[(1+(9*samples)):(10*(samples))]
+tc= data.frame(IO_out[(1+(4*samples)):(5*(samples))], # This is the prior for Heating Set Point
+                #IO_out[(1+(5*samples)):(6*(samples))], # This is the the prior Fraction Heated
+                IO_out[(1+(6*samples)):(7*(samples))]#,  # This is the prior for Infiltration 
+                #IO_out[(1+(7*samples)):(8*(samples))], # This is the prior for the Heating System efficiency
+                #IO_out[(1+(8*samples)):(9*(samples))], # This is the prior for the Window to Wall Ratio
+                #IO_out[(1+(9*samples)):(10*(samples))]  # This is the Double Glazing U-value
   )
+
+
+
 #ALT xc and xf
 
-xc$`IO_out[(1 + (2 * samples)):(3 * (samples))]` <- rnorm(100,1,1)
-xf$`IO_out[1:(samples)]`<-rnorm(100,1,1)
-xf <- data.frame(xf[sample(nrow(xf),10),])
-yf <- data.frame(yf[sample(nrow(yf),10),])
+# xc$`IO_out[(1 + (2 * samples)):(3 * (samples))]` <- rnorm(100,1,1)
+# xf$`IO_out[1:(samples)]`<-rnorm(100,1,1)
+#xf <- data.frame(xf[sample(nrow(xf),10),])
+#yf <- data.frame(yf[sample(nrow(yf),10),])
 
 #------------------------
 # RUN BAYESIAN CALIBRATION
 #------------------------
 # See paper: Booth, Choudhary, and Spiegelhalter (2013), "Handling
 # uncertainty in housing stock models", Building and Environment, DOI: 10.1016/j.buildenv.2011.08.016
-
+library(cmdstanr)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Return posterior realizations and params structure
 # pvals: samples from joint posterior distribution of calibration params
 # params: structure with info about parameters
-stan_post_c5_NO_PRED1.0= standriver(yf,yc,xf,xc,tc);
+stan_post_cmdtest = standriver(yf,yc,xf,xc,tc);
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-eta_mu <- mean(yc[,1], na.rm = TRUE) # mean value
-eta_sd <- sd(yc[,1], na.rm = TRUE) # standard deviation
+# Basic extract
+calibration_outputs <- extract(stan_post_cmdtest)
 
+# NEED TO REVIEW PACKAGE VERSIONS AS NOT WORKING
+# library(posterior)
+# calibration_outputs <- stan_post_cmdtest$draws_df()
 
-y_pred <- fitsamples$y_pred * eta_sd + eta_mu 
-
-
-buildingData(i).pvals = pvals
-buildingData(i).params = params
+# eta_mu <- mean(yc[,1], na.rm = TRUE) # mean value
+# eta_sd <- sd(yc[,1], na.rm = TRUE) # standard deviation
+# 
+# 
+# y_pred <- fitsamples$y_pred * eta_sd + eta_mu 
+# 
+# 
+# buildingData(i).pvals = pvals
+# buildingData(i).params = params
 
 #---------------------------------------------
 # RUN RETROFIT ANALYSIS USING CALIBRATED MODEL
