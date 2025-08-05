@@ -107,9 +107,13 @@ model {
   //tf[q] ~ uniform(0,1);
   rho_eta[1:(p+q)] ~ beta(1.0, 0.5);
   rho_delta[1:p] ~ beta(1.0, 0.2);
-  lambda_eta ~ gamma(10, 1); // gamma (shape, rate)
-  lambda_delta ~ gamma(10, 1); 
-  lambda_e ~ gamma(10, 0.1); 
+  // lambda_eta ~ gamma(10, 1); // gamma (shape, rate)
+  // lambda_delta ~ gamma(10, 1); 
+  // lambda_e ~ gamma(10, 0.1);
+  lambda_eta ~ gamma(3, 1);         // Mean 3, softer tails
+  lambda_delta ~ gamma(3, 1);       
+  lambda_e ~ gamma(2, 0.1);         // Mean 20, SD ~14
+
 
   L = cholesky_decompose(sigma_z); // cholesky decomposition 
   z ~ multi_normal_cholesky(mu, L);

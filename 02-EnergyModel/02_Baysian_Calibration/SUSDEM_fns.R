@@ -672,11 +672,20 @@ standriver = function(yf,yc,xf,xc,tc){
   # To run without predictive inferenec: 
   # comment lines 60-63 and 85
   # uncomment lines 65-68 and 86
-  fit <- stan(file = "bayesian_calibration.stan", 
-              data = stan_data, 
-              iter = 1000, 
-              chains = 4,
-              control = list(adapt_delta=0.8, max_treedepth=10))
+  
+  # fit <- stan(file = "bayesian_calibration.stan", 
+  #             data = stan_data, 
+  #             iter = 1000, 
+  #             chains = 4,
+  #             control = list(adapt_delta=0.8, max_treedepth=10))
+  
+  file <- stanc(file = "bayesian_calibration.stan") # changes to fix error
+  model <- stan_model(stanc_ret = file) # compile the model
+  
+  #model <- stan_model(file = "bayesian_calibration.stan")
+  fit <- sampling(model, data = stan_data, iter = 1000, chains = 4, # changed from 1000 to 2000 and added warm up
+                  control = list(adapt_delta=0.95, max_treedepth=15)) # changed adapt delta from 0.8 to 0,85 and  max_treedepth from 10 to 15
+  
   
   #fit <- stan(file = "bcWithoutPred.stan",
   #            data = stan_data,
@@ -684,11 +693,11 @@ standriver = function(yf,yc,xf,xc,tc){
   #            chains = 3)
   
   # plot traceplots, excluding warm-up
-  #stan_trace(fit, pars = c("tf", "beta_eta", "beta_delta", 
-  #                         "lambda_eta", "lambda_delta", "lambda_e"))
+  stan_trace(fit, pars = c("tf", "beta_eta", "beta_delta",
+                          "lambda_eta", "lambda_delta", "lambda_e"))
   
   # posterior probability distribution of tf
-  #stan_hist(fit, pars = c("tf"))
+  stan_hist(fit, pars = c("tf"))
   
   # extract predictions, excluding warm-up and 
   #samples <- rstan::extract(fit)

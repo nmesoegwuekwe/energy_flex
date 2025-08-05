@@ -1,12 +1,12 @@
-------------------------------------------------------
+#------------------------------------------------------
 #SUSDEM:
 # STOCHASTIC URBAN SCALE DOMESTIC ENERGY MODEL
 # BAYESIAN REGRESSION, CALIBRATION, AND DECISION-MAKING
-------------------------------------------------------
+#------------------------------------------------------
 # Andre Neto-Bradley 2021
 # Adapted from Original MATLAB (Adam Booth and Ruchi Choudhary, 2013)
 # Energy Efficient Cities Initiative (www.eeci.cam.ac.uk)
--------------------------------------------------------
+#-------------------------------------------------------
 
 # OVERVIEW--------------------------------------------------------------
 # INPUTS: Energy Performance Certificate / RdSAP inputs
@@ -18,7 +18,7 @@
 # OUTPUTS: End-use energy demands
 #          Utilities (installation costs; lifetime financial savings;
 #         CO2 emissions savings; thermal comfort improvement)
---------------------------------------------------------------
+#--------------------------------------------------------------
   
 # LOAD SUSDEM Classes and Functions ######## 
 # IMPORT INPUTS FOR CONSTRUCTION/DESIGN PARAMETERS
@@ -31,15 +31,19 @@ source("SUSDEM_Cls.R")
 #load('SalfordEPCMarch2012.mat')
 #load('SalfordWeather.mat')
 
-N = size(designParam,1) #N = number of sample dwellings
-dwellingtype = designParam$DwellingType # matrix for Dwelling type
-dwellingposition = designParam$DwellingPosition #matrix for Dwelling position
-dwellingage = designParam$AgeBandCode #matrix for Age band of dwelling
+haringey_sample <- read.csv("Haringey_Test_Sample.csv")
+designParam <- haringey_sample
 
-groundfloorareas = designParam$GroundFloorArea #matrix for Ground floor area
-firstfloorareas = designParam$FirstFloorArea #matrix for First floor area
-secondfloorareas = designParam$SecondFloorArea #matrix for Second floor area
-totalfloorareas = groundfloorareas+firstfloorareas+secondfloorareas #matrix for Total floor area
+
+# N = nrow(designParam) #N = number of sample dwellings # changed this because size(designParam,1) is not working in R
+# dwellingtype = designParam$DwellingType # matrix for Dwelling type
+# dwellingposition = designParam$DwellingPosition #matrix for Dwelling position
+# dwellingage = designParam$AgeBandCode #matrix for Age band of dwelling
+# 
+# groundfloorareas = designParam$GroundFloorArea #matrix for Ground floor area
+# firstfloorareas = designParam$FirstFloorArea #matrix for First floor area
+# secondfloorareas = designParam$SecondFloorArea #matrix for Second floor area
+# totalfloorareas = groundfloorareas+firstfloorareas+secondfloorareas #matrix for Total floor area
 
 
 #SPECIFY NUMBER OF CLUSTERS
@@ -77,6 +81,7 @@ samples = 10;
 library(data.table)
 library(dplyr)
 
+
 # Load the EUI posteriors from previous EFlex Module
 load(file='haringey_prior_dist.rda')
 
@@ -97,6 +102,8 @@ haringey_sample <- read.csv("Haringey_Test_Sample.csv")
 
 # In both cases you will have NAs in place for non-relevant values (e.g. a single floor flat 
 # would have 'SecondFloorArea' marked as NA). You need to replace these NAs with zeros to allow the the function to run.
+
+
 
 RDSAP_NA_Cleanser <- function(designParam){
   designParam$SecondFloorHeight[which(is.na(designParam$SecondFloorHeight))] <- 0
@@ -151,7 +158,7 @@ tc= data.frame(IO_out[(1+(4*samples)):(5*(samples))], # This is the prior for He
 #------------------------
 # See paper: Booth, Choudhary, and Spiegelhalter (2013), "Handling
 # uncertainty in housing stock models", Building and Environment, DOI: 10.1016/j.buildenv.2011.08.016
-library(cmdstanr)
+library(rstan) # change to cmdstan
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Return posterior realizations and params structure
 # pvals: samples from joint posterior distribution of calibration params
@@ -161,6 +168,15 @@ stan_post_cmdtest = standriver(yf,yc,xf,xc,tc);
 
 # Basic extract
 calibration_outputs <- extract(stan_post_cmdtest)
+
+
+# plots
+library(bayesplot)
+mcmc_trace(as.array(stan_post_cmdtest), pars = params_to_plot)
+mcmc_dens_overlay(as.array(stan_post_cmdtest), pars = params_to_plot)
+mcmc_rhat(rhat(stan_post_cmdtest))
+mcmc_neff(neff_ratio(stan_post_cmdtest))
+mcmc_acf(as.array(stan_post_cmdtest), pars = c("lambda_eta", "beta_eta[2]", "lp__"))
 
 # NEED TO REVIEW PACKAGE VERSIONS AS NOT WORKING
 # library(posterior)

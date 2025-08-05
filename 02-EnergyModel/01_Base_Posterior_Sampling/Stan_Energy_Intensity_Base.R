@@ -22,6 +22,8 @@
 # 
 # Ei[j] ~ N(mu_E, sigma_E)
 # 
+cat("Starting script...\n")
+
 
 require(dplyr)
 
@@ -237,7 +239,8 @@ LAD_block <- Sys.getenv("LOCAL_AUTHORITY")
 LAD_List <- read.csv("nlac2011.csv") %>%
   filter(grepl(LAD_block, LAD20CD))
 
-E_posterior_all <- NULL
+E_posterior_all <- NULL # MAY NEED TO INITIALISE BETTER
+
 
 for(i in LAD_List$LAD20CD){
   
@@ -376,28 +379,30 @@ for(i in LAD_List$LAD20CD){
   
   # EFFICIENCY PATCH: EPC SAMPLE REDUX
   # This function samples down to a maximum size of 1920 (80 records per typology)
-epc_sample_redux <- function(dataset){
-  replacement <- NULL
-  for(i in 1:24){
-    if(sum(dataset$group == i)<=80){
-      replacement <- rbind(replacement, dataset[which(dataset$group == i),])
+  epc_sample_redux <- function(dataset){
+    replacement <- NULL
+    for(i in 1:24){
+      if(sum(dataset$group == i)<=80){
+        replacement <- rbind(replacement, dataset[which(dataset$group == i),])
+      }
+      else{
+        replacement <- rbind(replacement, dataset[sample(length(dataset$group == i), 80),])
+      }
+      
     }
-    else{
-      replacement <- rbind(replacement, dataset[sample(length(dataset$group == i), 80),])
-    }
-    
+    return(replacement)
   }
- return(replacement)
-}
-
-epc_df_cl <- epc_sample_redux(epc_df_cl)
-
-
+  
+  epc_df_cl <- epc_sample_redux(epc_df_cl)
+  
+  
   if(gas_toggle==TRUE){
     epc_df_cl[,"group"] <- epc_df_cl$group + (length(unique(epc_df_cl$group))*as.numeric(epc_df_cl$`mains-gas-flag`=="Y"))
   }
   
   # STAN MODEL INPUTS #####
+
+  
   
   # APPLY SQRT NORMALISATION #
   
@@ -408,12 +413,12 @@ epc_df_cl <- epc_sample_redux(epc_df_cl)
   epc_df_cl$E_CONS_sqrt <- sqrt(as.numeric(epc_df_cl$`energy-consumption-current`))
   epc_df_cl$E_CONS_normal <- (epc_df_cl$E_CONS_sqrt - mean(NEED_data_typecast$E_TOT_sqrt))/sd(NEED_data_typecast$E_TOT_sqrt)
   
-  
+  cat("Running model...\n")
   epc_priors <- stanc(file = "EPC_Prior_Sampling.stan") # Check Stan file
   epc_priors_model <- stan_model(stanc_ret = epc_priors)
   epc_priors_haringey<- sampling(epc_priors_model, iter=samples_mcmc, seed=2019, warmup=warmup_mcmc,
-                                 chains=chains_mcmc,
-                                 refresh = 100,
+                                 chains=chains_mcmc,verbose =TRUE,
+                                 refresh = 10,
                                  data=list(N = length(NEED_data_typecast$E_TOT_normal), # Number of instances in the NEED Data
                                            M = length(epc_df_cl$E_CONS_normal),# Number of instances in the EPC data for specific region
                                            T = length(unique(NEED_data_typecast$group)),# Number of households typology groups
@@ -496,4 +501,23 @@ epc_df_cl <- epc_sample_redux(epc_df_cl)
   print(paste("Worflow Finished for LA",i))
 }
 
-save(E_posterior_all, file="/data/outputs/base_dist_posterior.Rdata")
+### saving samples
+
+output_dir <- "data/outputs" # creating output directory
+
+# Check if the directory exists; if not, create it
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)  }
+
+# Construct the path dynamically
+profile <- "dev"
+timestamp <- format(Sys.time(), "%Y%m%d_%H%M")
+                    
+output_dir <- "data/outputs"
+filename <- paste0("base_dist_posterior_", profile,"_" ,timestamp, ".Rdata")
+filepath <- file.path(output_dir, filename)
+
+save(E_posterior_all, file = filepath)
+
+cat("Script finished\n")
+
