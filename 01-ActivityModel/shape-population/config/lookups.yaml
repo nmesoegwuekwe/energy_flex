@@ -32,7 +32,10 @@
 ################################################################################
 
 # For the geographic loockups:
-area_path: "data/input/PCD_OA_LSOA_MSOA_LAD_FEB22_UK_LU.zip"
+# update lookups.yaml with the latest area_path - august 2022
+area_path: "01-ActivityModel/inputs/data/PCD_OA_LSOA_MSOA_LAD_NOV20_UK_LU.zip"
+
+ONSPD_file_path: "01-ActivityModel/inputs/data/geo_imd.zip"
 
 accommodation:
   'House: Detached': 2
@@ -224,3 +227,28 @@ floor_area:
     - 20
     - 475
     - 500
+
+
+# For the IMD bands
+
+imd_band:
+  -
+    - 1
+    - 1
+    - 6569 
+  -
+    - 2
+    - 6570
+    - 13138
+  -
+    - 3
+    - 13139
+    - 19607
+  -
+    - 4
+    - 19608
+    - 26276
+  -
+    - 5
+    - 26277
+    - 32844 

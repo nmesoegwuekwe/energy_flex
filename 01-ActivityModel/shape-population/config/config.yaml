@@ -4,7 +4,7 @@
 ################################################################################
 
 # Data location
-epc_path: "data/input/all-domestic-certificates.zip"
+epc_path: "01-ActivityModel/inputs/data/all-domestic-certificates.zip"
 
 # Variable Selection
 epc_headers:
@@ -26,7 +26,7 @@ epc_headers:
 ################################################################################
 
 # Data Location
-spenser_path: "data/input/msm_england.zip"
+spenser_path: "01-ActivityModel/inputs/data/msm_england.zip"
 
 # Unused variables
 drop_list:
