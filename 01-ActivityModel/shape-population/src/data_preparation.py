@@ -24,9 +24,10 @@ def geo_lookup():
     """
 
     # Configure lookups from "config/lookups.yaml" file
-    lookup_yaml = open("config/lookups.yaml")
+    lookup_yaml = open("01-ActivityModel/shape-population/config/lookups.yaml")
     parsed_lookup = yaml.load(lookup_yaml, Loader=yaml.FullLoader)
     lookup_path = parsed_lookup.get("area_path")
+    additional_path = parsed_lookup.get("ONSPD_file_path")
 
     # Open file as Pandas DataFrame
     area_lookup = pd.read_csv(
@@ -37,18 +38,46 @@ def geo_lookup():
         engine="python",
     )
 
+    imd_df = pd.read_csv(
+        additional_path,
+        compression="zip",
+        usecols=["pcds","oslaua", "oa11" , "msoa11","imd", "imd_band"],
+        encoding="unicode_escape",
+        engine="python",
+    )
+
     # Clean empty and non-England areas
     area_lookup.dropna(subset=["ladcd"], inplace=True)
     discard = ["S", "W", "N", "L", "M"]
     area_lookup = area_lookup[~area_lookup.ladcd.str.contains("|".join(discard))]
     lads = area_lookup.ladcd.unique()
 
+    # Clean IMD lookup
+    imd_df.dropna(subset=["oslaua"], inplace=True)
+    discard = ["S", "W", "N", "L", "M"]
+    imd_df = imd_df[~imd_df["oslaua"].str.contains("|".join(discard))]
+    imd_df.rename(
+        columns={
+            #"pcds": "pcds",
+            "oslaua": "ladcd",
+            "oa11": "oa11cd",
+            "msoa11": "msoa11cd",
+            "imd": "IMD",
+            "imd_band": "IMD_band",
+        },
+        inplace=True,
+    )
+
+    imd_lookup = imd_df.set_index("msoa11cd", drop=True).loc[:, "IMD_band"].to_dict()
+    msoa_lookup = imd_df.set_index("pcds", drop=True).loc[:, "msoa11cd"].to_dict()
+    # cant use oa because imd is not unique per oa, so we use msoa11cd
+
     # Make lookup dictionaries
     oacd_lookup = area_lookup.set_index("pcds", drop=True).loc[:, "oa11cd"].to_dict()
     ladnm_lookup = area_lookup.set_index("oa11cd", drop=True).loc[:, "ladnm"].to_dict()
     ladcd_lookup = area_lookup.set_index("oa11cd", drop=True).loc[:, "ladcd"].to_dict()
 
-    return lads, ladnm_lookup, ladcd_lookup, oacd_lookup
+    return lads, ladnm_lookup, ladcd_lookup, oacd_lookup, imd_lookup, msoa_lookup
 
 
 def augment(x, lookup):
@@ -75,18 +104,18 @@ def augment(x, lookup):
 class Epc:
     """Class to represent the EPC data and related parameters/methods."""
 
-    def __init__(self, oacd_lookup, ladnm_lookup, ladcd_lookup) -> None:
+    def __init__(self, oacd_lookup, ladnm_lookup, ladcd_lookup, imd_lookup, msoa_lookup) -> None:
         """Initialise an EPC class."""
 
         # Configure epc api related parameters from "config/config.yaml"
-        epc_yaml = open("config/config.yaml")
+        epc_yaml = open("01-ActivityModel/shape-population/config/config.yaml")
         parsed_epc = yaml.load(epc_yaml, Loader=yaml.FullLoader)
         self.path = parsed_epc.get("epc_path")
         self.desired_headers = parsed_epc.get("epc_headers")
 
         # Configure lookups
         ## Lookups from "config/lookups.yaml" file
-        lookup_yaml = open("config/lookups.yaml")
+        lookup_yaml = open("01-ActivityModel/shape-population/config/lookups.yaml")
         parsed_lookup = yaml.load(lookup_yaml, Loader=yaml.FullLoader)
         self.accommodation_lookup = parsed_lookup.get("accommodation")
         self.age_categorical_lookup = parsed_lookup.get("age_categorical")
@@ -98,8 +127,10 @@ class Epc:
         # Get EPC data as DataFrame
         self.df = self.get_epc_dataframe()
 
-        # Set LADNM, LADCD and OA columns
-        self.set_geo_lookups(oacd_lookup, ladnm_lookup, ladcd_lookup)
+        # Set LADNM, LADCD and OA columns and now imd cols
+        self.set_geo_lookups(oacd_lookup, ladnm_lookup, ladcd_lookup, imd_lookup, msoa_lookup)
+
+
 
     def get_epc_dataframe(self) -> pd.DataFrame:
         """Get EPC data for all available England Local Authorities.
@@ -151,12 +182,13 @@ class Epc:
         # Return a unique EPC dataframe
         return pd.concat(dfs)
 
-    def set_geo_lookups(self, oacd_lookup, ladnm_lookup, ladcd_lookup):
+    def set_geo_lookups(self, oacd_lookup, ladnm_lookup, ladcd_lookup, imd_lookup, msoa_lookup):
         """Add geographic information using postcode.
 
         1. Transform the postcode column into Output Area (new column name: "OA")
         2. Create a new column "LADNM" with the Local Authority name
         3. Create a new column "LADCD" with the Local Authority code
+        4. Create a new column "IMD" with the IMD band
 
         :param oacd_lookup: lookup from postcode to Output Area
         :type oacd_lookup: dict
@@ -164,15 +196,24 @@ class Epc:
         :type ladnm_lookup: dict
         :param ladcd_lookup: lookup from  Output Area to Local Authority code
         :type ladcd_lookup: dict
+        :param imd_lookup: lookup from Output Area to IMD
+        :type imd_lookup: dict
         """
         # Area: change area from postcode to output area
         self.set_categorical_code(self.df, "POSTCODE", oacd_lookup, rename="OA")
+
+        self.set_categorical_code(self.df, "POSTCODE", msoa_lookup, rename="msoa11")
 
         # Create new column: Local authority name
         self.df["LADNM"] = self.df["OA"].apply(func=lambda x: augment(x, ladnm_lookup))
 
         # Create new column: Local authority code
         self.df["LADCD"] = self.df["OA"].apply(func=lambda x: augment(x, ladcd_lookup))
+
+        """Add IMD information using onspd dataset."""
+
+        self.df["IMD_band"] = self.df["msoa11"].apply(func=lambda x: augment(x, imd_lookup))
+
 
     @staticmethod
     def remove_duplicates(df) -> pd.DataFrame:
@@ -223,15 +264,18 @@ class Epc:
         :rtype: pandas.DataFrame
         """
 
-        # setting new values according the rename_dict
-        df[df_col] = df[df_col].apply(func=lambda x: augment(x, lookup))
+        # # setting new values according the rename_dict
+        # df[df_col] = df[df_col].apply(func=lambda x: augment(x, lookup))
+        
+        #changed code to create a new column instead of overwriting the original
+        df[rename] = df[df_col].apply(func=lambda x: augment(x, lookup))
 
         # remove empty rows
-        df.dropna(subset=[df_col], inplace=True)
+        df.dropna(subset=[rename], inplace=True)
 
-        # rename column
-        if rename:
-            df.rename({df_col: rename}, axis=1, inplace=True)
+        # # rename column
+        # if rename:
+        #     df.rename({df_col: rename}, axis=1, inplace=True)
 
     @staticmethod
     def set_numerical_code(df, df_col, lookup, rename=False):
@@ -334,7 +378,8 @@ class Epc:
         self.set_lookups(df)
 
         # Change selected columns to integer values
-        cols = ["FLOOR_AREA", "ACCOM_AGE", "GAS", "tenure", "LC4402_C_TYPACCOM"]
+        cols = ["FLOOR_AREA", "ACCOM_AGE", "GAS", "tenure", "LC4402_C_TYPACCOM","IMD_band"]
+        # Note: "IMD_band" is categorical, but it is easier to work with integers
         df[cols] = df[cols].applymap(np.int64)
 
         return df
@@ -346,7 +391,7 @@ class Spenser:
     def __init__(self, ladnm_lookup, ladcd_lookup) -> None:
         """Initialise a Spenser class."""
         # Configure SPENSER related parameters from "config/config.yaml"
-        spenser_yaml = open("config/config.yaml")
+        spenser_yaml = open("01-ActivityModel/shape-population/config/config.yaml")
         parsed_spenser = yaml.load(spenser_yaml, Loader=yaml.FullLoader)
         self.path = parsed_spenser.get("spenser_path")
         drop_list = parsed_spenser.get("drop_list")
